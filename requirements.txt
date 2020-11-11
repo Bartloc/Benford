@@ -1,0 +1,6 @@
+flask
+redis
+numpy 
+benford_py== 0.2.7
+scipy
+pandas
