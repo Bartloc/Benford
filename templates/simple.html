@@ -3,16 +3,27 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>BenFord Law Analysis</title>
 </head>
 
 <body>
 
-    {% for ben in benford %}
-    {{ ben|safe }}
-    {% endfor %}
-
-    <img src="static/images/a.png">
+    <div>
+        <img src="static/images/a.png" width="90%" />
+        <div>
+            <p>
+                <font color="green">Green</font> - There is 95% Confidence that number pass Benford Law
+            </p>
+            <p>
+                <font color="red">Red</font> - There is no 95% Confidence that number pass Benford Law
+            </p>
+        </div>
+        <div>
+            {% for ben in benford %}
+            {{ ben|safe }}
+            {% endfor %}
+        </div>
+    </div>
 </body>
 
 </html>

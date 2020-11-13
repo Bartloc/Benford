@@ -6,72 +6,72 @@ import pandas as pd
 
 import benford as bf
 
-import redis
-from flask import Flask, request, render_template, session, redirect
-
+from flask import Flask, render_template, request
+from werkzeug.utils import secure_filename
+import os
 app = Flask(__name__)
-cache = redis.Redis(host='redis', port=6379)
-
-conf = 95
-file = "data/census_2009b"
-
-sniffer = csv.Sniffer()
-sample_bytes = 320
-dialect = sniffer.sniff(open(file).read(sample_bytes))
-
-data = pd.read_csv(file, delimiter=dialect.delimiter)
-f1d = bf.first_digits(data['7_2009'], digs=1, confidence=conf)
-f1d_sorted = f1d.sort_index()
-f1d_sorted['color'] = f1d_sorted['Z_score'].apply(
-    lambda x: 'green' if x > 1.65 else 'red')
-
-f1d['percent'] = 100*(f1d['Found']-f1d['Expected'])/f1d['Expected']
-width = 0.3
-ind = np.arange(1, 10)
-plt.figure(figsize=(15, 5))
-color = ['orange ']
-plt.xticks(ind)
-plt.bar(ind, f1d_sorted['Found'], width=width*0.9,
-        label='Found', color=f1d_sorted['color'], alpha=0.7)
-plt.bar(ind+width, f1d_sorted['Expected'], width=width *
-        0.9, label='Expected', color='blue', alpha=0.7)
-plt.title('Benford')
-plt.legend()
-plt.grid()
-plt.savefig('static/images/a.png')
-
-benf = bf.Benford((data, '7_2009'))
-# benRpt = benf.F1D.report()
-benPlt = benf.F1D.show_plot()
+app.config['UPLOAD_FOLDER'] = 'uploads'
 
 
-def get_hit_count():
-    retries = 5
-    while True:
-        try:
-            return cache.incr('hits')
-        except redis.exceptions.ConnectionError as exc:
-            if retries == 0:
-                raise exc
-            retries -= 1
-            time.sleep(0.5)
+def Sniff_File(file):
+    sniffer = csv.Sniffer()
+    sample_bytes = 320
+    dialect = sniffer.sniff(open(file).read(sample_bytes))
+    return dialect.delimiter
 
 
-@app.route('/', methods=("POST", "GET"))
-def html_table():
+def Collect_Num_Data(file, delimiter):
+    data_all = pd.read_csv(file, delimiter=delimiter)
+    numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+    data = data_all.select_dtypes(include=numerics)
+    return data
 
-    return render_template('simple.html',
-                           benford=[f1d.to_html()],)
+
+@app.route("/")
+def upload_file():
+    return render_template('upload.html')
 
 
-@app.after_request
-def add_header(r):
-    """
-    Add headers to both force latest IE rendering engine or Chrome Frame,
-    and also to cache the rendered page for 10 minutes.
-    """
-    r.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    r.headers["Pragma"] = "no-cache"
-    r.headers["Expires"] = "0"
-    r.headers['Cache-Control'] = 'public, max-age=0'
-    return r
+@app.route('/uploader', methods=['GET', 'POST'])
+def uploaded_file():
+    if request.method == 'POST':
+
+        f = request.files['file']
+        file = os.path.join(
+            app.config['UPLOAD_FOLDER'], secure_filename(f.filename))
+        f.save(file)
+
+        delimiter = Sniff_File(file)
+        data = Collect_Num_Data(file, delimiter)
+
+        conf = 95
+        f1d = bf.first_digits(data.iloc[:, 0], digs=1, confidence=conf)
+        f1d_sorted = f1d.sort_index()
+        f1d_sorted['color'] = f1d_sorted['Z_score'].apply(
+            lambda x: 'green' if x > 1.65 else 'red')
+
+        f1d['percent'] = 100*(f1d['Found']-f1d['Expected'])/f1d['Expected']
+        width = 0.3
+        ind = np.arange(1, 10)
+        plt.figure(figsize=(15, 5))
+        color = ['orange ']
+        plt.xticks(ind)
+        plt.bar(ind, f1d_sorted['Found'], width=width*0.9,
+                label='Found', color=f1d_sorted['color'], alpha=0.7)
+        plt.bar(ind+width, f1d_sorted['Expected'], width=width *
+                0.9, label='Expected', color='blue', alpha=0.7)
+        plt.title('Benford')
+        plt.legend()
+        plt.grid()
+        plt.savefig('static/images/a.png')
+
+        #benf = bf.Benford((data, '7_2009'))
+        # benRpt = benf.F1D.report()
+        #benPlt = benf.F1D.show_plot()
+
+        return render_template('simple.html',
+                               benford=[f1d.to_html()],)
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
