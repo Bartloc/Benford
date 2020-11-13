@@ -2,6 +2,7 @@ import time
 import csv
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import pandas as pd
 import pathlib
 
@@ -10,6 +11,8 @@ import benford as bf
 from flask import Flask, render_template, request
 from werkzeug.utils import secure_filename
 import os
+
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
@@ -36,10 +39,10 @@ def allowed_file(filename):
 
 @app.route("/")
 def upload_file():
-    return render_template('upload.html')
+    return render_template('form.html')
 
 
-@app.route('/uploader', methods=['GET', 'POST'])
+@app.route('/benford', methods=['GET', 'POST'])
 def uploaded_file():
     if request.method == 'POST':
 
@@ -49,7 +52,7 @@ def uploaded_file():
             return 'Wrong file extension', 200
 
         file = os.path.join(
-            app.config['UPLOAD_FOLDER'], secure_filename(f.filename))
+            app.config['UPLOAD_FOLDER'], secure_filename('data'))
         f.save(file)
 
         delimiter = Sniff_File(file)
@@ -65,23 +68,23 @@ def uploaded_file():
         width = 0.3
         ind = np.arange(1, 10)
         plt.figure(figsize=(15, 5))
-        color = ['orange ']
         plt.xticks(ind)
-        plt.bar(ind, f1d_sorted['Found'], width=width*0.9,
-                label='Found', color=f1d_sorted['color'], alpha=0.7)
-        plt.bar(ind+width, f1d_sorted['Expected'], width=width *
-                0.9, label='Expected', color='blue', alpha=0.7)
-        plt.title('Benford')
-        plt.legend()
-        plt.grid()
-        plt.savefig('static/images/a.png')
+        p1 = plt.bar(ind, f1d_sorted['Found'], width=width*0.9,
+                     label='Found', color=f1d_sorted['color'], alpha=0.7)
+        p2 = plt.bar(ind+width, f1d_sorted['Expected'], width=width *
+                     0.9, label='Expected', color='blue', alpha=0.7)
 
-        # benf = bf.Benford((data, '7_2009'))
-        # benRpt = benf.F1D.report()
-        # benPlt = benf.F1D.show_plot()
+        patchMatch = mpatches.Patch(color='green', label='Match - 95% ')
+        patchNoMatch = mpatches.Patch(
+            color='red', label='No Match - less tha 95%')
+        plt.title('Benford')
+
+        plt.legend(handles=[patchMatch, patchNoMatch, p2])
+        plt.grid()
+        plt.savefig('static/images/benford.png')
 
         return render_template('benford.html',
-                               benford=[f1d.to_html()],)
+                               benford=[f1d.to_html()])
 
 
 @app.errorhandler(csv.Error)

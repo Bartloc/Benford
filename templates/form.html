@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Send Data For Benford Law Analysis</h2>
+<form action="http://localhost:5000/benford" method="POST" enctype="multipart/form-data">
+
+    <div>Input File: <input type="file" name="file" /><input type="submit" /></div>
+</form>
+<p>System will analyse first column with numeric data</p>
+{% endblock %}

@@ -1,29 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "layout.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>BenFord Law Analysis</title>
-</head>
-
-<body>
-
-    <div>
-        <img src="static/images/a.png" width="90%" />
-        <div>
-            <p>
-                <font color="green">Green</font> - There is 95% match that the number pass Benford Law
-            </p>
-            <p>
-                <font color="red">Red</font> - There is less than 95% math that number pass Benford Law
-            </p>
-        </div>
-        <div>
-            {% for ben in benford %}
-            {{ ben|safe }}
-            {% endfor %}
-        </div>
-    </div>
-</body>
-
-</html>
+{% block content %}
+<div id="menu">
+    <a href="\">Upload new file</a>
+</div>
+<h1>Benford Law Test</h1>
+<center>
+    <img src="static/images/benford.png" width="90%" />
+</center>
+<div>
+    <center>
+        {% for ben in benford %}
+        {{ ben|safe }}
+        {% endfor %}
+    </center>
+</div>
+{% endblock %}
