@@ -3,6 +3,7 @@ import csv
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import pathlib
 
 import benford as bf
 
@@ -11,6 +12,8 @@ from werkzeug.utils import secure_filename
 import os
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+DISALLOWED_EXTENSIONS = {'exe', 'dll', 'php', 'pdf'}
 
 
 def Sniff_File(file):
@@ -27,6 +30,10 @@ def Collect_Num_Data(file, delimiter):
     return data
 
 
+def allowed_file(filename):
+    return False if pathlib.Path(filename).suffix in DISALLOWED_EXTENSIONS else True
+
+
 @app.route("/")
 def upload_file():
     return render_template('upload.html')
@@ -37,6 +44,10 @@ def uploaded_file():
     if request.method == 'POST':
 
         f = request.files['file']
+
+        if not allowed_file(f.filename):
+            return 'Wrong file extension', 200
+
         file = os.path.join(
             app.config['UPLOAD_FOLDER'], secure_filename(f.filename))
         f.save(file)
@@ -46,11 +57,11 @@ def uploaded_file():
 
         conf = 95
         f1d = bf.first_digits(data.iloc[:, 0], digs=1, confidence=conf)
-        f1d_sorted = f1d.sort_index()
-        f1d_sorted['color'] = f1d_sorted['Z_score'].apply(
-            lambda x: 'green' if x > 1.65 else 'red')
-
         f1d['percent'] = 100*(f1d['Found']-f1d['Expected'])/f1d['Expected']
+        f1d_sorted = f1d.sort_index()
+        f1d_sorted['color'] = f1d_sorted['percent'].apply(
+            lambda x: 'green' if abs(x) < 5 else 'red')
+
         width = 0.3
         ind = np.arange(1, 10)
         plt.figure(figsize=(15, 5))
@@ -65,12 +76,22 @@ def uploaded_file():
         plt.grid()
         plt.savefig('static/images/a.png')
 
-        #benf = bf.Benford((data, '7_2009'))
+        # benf = bf.Benford((data, '7_2009'))
         # benRpt = benf.F1D.report()
-        #benPlt = benf.F1D.show_plot()
+        # benPlt = benf.F1D.show_plot()
 
-        return render_template('simple.html',
+        return render_template('benford.html',
                                benford=[f1d.to_html()],)
+
+
+@app.errorhandler(csv.Error)
+def handle_empty_data(args):
+    return 'Cannot read data. Try to change delimiter.', 200
+
+
+@app.errorhandler(pd.errors.ParserError)
+def handle_empty_data(args):
+    return 'Failed parsing Input', 200
 
 
 if __name__ == '__main__':
